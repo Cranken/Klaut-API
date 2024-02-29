@@ -1,3 +1,4 @@
+using System.Data.SqlTypes;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Swashbuckle.AspNetCore.Swagger;
 
@@ -21,19 +22,30 @@ app.UseHttpsRedirection();
 
 app.MapPost("/upload", async (HttpContext inp) =>
 {
-    using (var reader = new StreamReader(inp.Request.Body))
+    using (var reader = inp.Request.Body)
     {
-        var data = await reader.ReadToEndAsync();
-        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        var random = new Random();
-
-        var id = new string(Enumerable.Repeat(chars, 5)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
-        using (var f = new StreamWriter(File.Create($"data/{@id}.txt")))
+        if (inp.Request.ContentLength.HasValue)
         {
-            await f.WriteAsync(data);
+            var cl = inp.Request.ContentLength.Value;
+            var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            var random = new Random();
+
+            var id = new string(Enumerable.Repeat(chars, 5)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+
+            using (var f = File.Create($"data/{@id}"))
+            {
+                long read = 0;
+                var convertedLength = Convert.ToInt32(cl);
+                while (read < cl)
+                {
+                    var dataBuf = new byte[convertedLength];
+                    var curRead = await inp.Request.Body.ReadAsync(dataBuf, 0, convertedLength);
+                    await f.WriteAsync(dataBuf, 0, curRead);
+                    read += curRead;
+                }
+            }
         }
-        Console.WriteLine(data);
     }
     return "test";
 })
