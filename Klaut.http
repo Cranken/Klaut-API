@@ -1,0 +1,6 @@
+@Klaut_HostAddress = http://localhost:5168
+
+GET {{Klaut_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
