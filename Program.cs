@@ -1,13 +1,10 @@
-using System.Data.SqlTypes;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Swashbuckle.AspNetCore.Swagger;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 
 var app = builder.Build();
 
@@ -20,37 +17,63 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapPost("/upload", async (HttpContext inp) =>
+app.MapPost("/upload", async (HttpContext req) =>
 {
-    using (var reader = inp.Request.Body)
+    var body = req.Request.Body;
+    if (req.Request.ContentLength.HasValue)
     {
-        if (inp.Request.ContentLength.HasValue)
-        {
-            var cl = inp.Request.ContentLength.Value;
-            var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            var random = new Random();
+        var contentLength = req.Request.ContentLength.Value;
+        var id = GenerateRandomAlphanumericalString(5);
 
-            var id = new string(Enumerable.Repeat(chars, 5)
-                .Select(s => s[random.Next(s.Length)]).ToArray());
-
-            using (var f = File.Create($"data/{@id}"))
-            {
-                long read = 0;
-                var convertedLength = Convert.ToInt32(cl);
-                while (read < cl)
-                {
-                    var dataBuf = new byte[convertedLength];
-                    var curRead = await inp.Request.Body.ReadAsync(dataBuf, 0, convertedLength);
-                    await f.WriteAsync(dataBuf, 0, curRead);
-                    read += curRead;
-                }
-            }
-        }
+        await WriteStreamToFileAsync($"data/{@id}", req.Request.Body, contentLength);
     }
     return "test";
 })
 .WithName("Upload")
 .WithOpenApi();
+
+app.MapGet("/", (HttpContext req) =>
+{
+    // Frontpage
+    return "Hello";
+});
+
+app.MapGet("/{id}.{ext?}", (HttpContext req) =>
+{
+    // Retrieve files
+    Console.WriteLine(req.Request.RouteValues["id"]);
+    if (req.Request.RouteValues.ContainsKey("ext"))
+    {
+        Console.WriteLine(req.Request.RouteValues["ext"]);
+    }
+});
+
+static async Task WriteStreamToFileAsync(string name,
+                                    Stream data,
+                                    long dataLength)
+{
+    using var f = File.Create(name);
+    long read = 0;
+    var convertedLength = Convert.ToInt32(dataLength);
+    while (read < dataLength)
+    {
+        var dataBuf = new byte[convertedLength];
+        var curRead = await data.ReadAsync(dataBuf, 0, convertedLength);
+        await f.WriteAsync(dataBuf, 0, curRead);
+        read += curRead;
+    }
+
+}
+
+static string GenerateRandomAlphanumericalString(int length)
+{
+    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    var random = new Random();
+
+    return new string(Enumerable.Repeat(chars, length)
+        .Select(s => s[random.Next(s.Length)]).ToArray());
+}
+
 
 app.Run();
 
