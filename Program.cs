@@ -1,3 +1,9 @@
+using System.ComponentModel.Design;
+using System.Net;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.WebUtilities;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -17,17 +23,51 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapPost("/upload", async (HttpContext req) =>
+app.MapPost("/upload", async (HttpContext ctx) =>
 {
-    var body = req.Request.Body;
-    if (req.Request.ContentLength.HasValue)
+    if (ctx.Request.ContentType is null)
     {
-        var contentLength = req.Request.ContentLength.Value;
-        var id = GenerateRandomAlphanumericalString(5);
-
-        await WriteStreamToFileAsync($"data/{@id}", req.Request.Body, contentLength);
+        ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
+        return;
     }
-    return "test";
+
+    if (ctx.Request.ContentLength.HasValue)
+    {
+        if (ctx.Request.ContentType!.Contains("multipart/form-data"))
+        {
+            // Multipart data
+            var mpartBoundary = ctx.Request.GetMultipartBoundary();
+            var reader = new MultipartReader(mpartBoundary, ctx.Request.Body);
+            var section = await reader.ReadNextSectionAsync();
+            var ids = new List<string>();
+            while (section is not null)
+            {
+                var cDispHeader = section.GetContentDispositionHeader();
+                if (cDispHeader is not null)
+                {
+                    var id = GenerateRandomAlphanumericalString(5);
+
+                    using var f = new FileStream($"data/{@id}", FileMode.Append);
+                    await section.Body.CopyToAsync(f);
+                    ids.Add(id);
+                }
+
+                section = await reader.ReadNextSectionAsync();
+            }
+            await ctx.Response.WriteAsync(String.Join("\n", ids));
+
+        }
+        else
+        {
+            // Conventional body post
+            var contentLength = ctx.Request.ContentLength.Value;
+            var id = GenerateRandomAlphanumericalString(5);
+
+            using var f = new FileStream($"data/{@id}", FileMode.Append);
+            await ctx.Request.Body.CopyToAsync(f);
+            await ctx.Response.WriteAsync(id);
+        }
+    }
 })
 .WithName("Upload")
 .WithOpenApi();
@@ -47,23 +87,6 @@ app.MapGet("/{id}.{ext?}", (HttpContext req) =>
         Console.WriteLine(req.Request.RouteValues["ext"]);
     }
 });
-
-static async Task WriteStreamToFileAsync(string name,
-                                    Stream data,
-                                    long dataLength)
-{
-    using var f = File.Create(name);
-    long read = 0;
-    var convertedLength = Convert.ToInt32(dataLength);
-    while (read < dataLength)
-    {
-        var dataBuf = new byte[convertedLength];
-        var curRead = await data.ReadAsync(dataBuf, 0, convertedLength);
-        await f.WriteAsync(dataBuf, 0, curRead);
-        read += curRead;
-    }
-
-}
 
 static string GenerateRandomAlphanumericalString(int length)
 {
