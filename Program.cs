@@ -1,15 +1,8 @@
 using FileAPI.PostgreSQL;
-using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -27,17 +20,6 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-    app.UseDeveloperExceptionPage();
-    app.UseMigrationsEndPoint();
-}
-
-app.UseHttpsRedirection();
-
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -45,6 +27,14 @@ using (var scope = app.Services.CreateScope())
     var context = services.GetRequiredService<FileContext>();
     context.Database.EnsureCreated();
 }
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseMigrationsEndPoint();
+}
+
+app.UseHttpsRedirection();
 
 app.MapControllers();
 app.Run();
