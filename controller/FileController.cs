@@ -17,16 +17,16 @@ namespace FileAPI.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<FileAPI.PostgreSQL.File>> GetFileAsync(string id)
+        public async Task<ActionResult<FileStream>> GetFileAsync(string id)
         {
-            Console.WriteLine(id);
             var file = await _context.Files.FindAsync(id);
 
             if (file == null)
             {
                 return NotFound();
             }
-            return file;
+            var f = new FileStream($"data/{@file.Id}", FileMode.Open, FileAccess.Read);
+            return new FileStreamResult(f, file.FileType);
         }
 
         [HttpPost("upload")]
@@ -51,7 +51,22 @@ namespace FileAPI.Controllers
                         var cDispHeader = section.GetContentDispositionHeader();
                         if (cDispHeader is not null)
                         {
-                            var id = Utils.GenerateRandomAlphanumericalString(5);
+                            string id;
+                            PostgreSQL.File? file;
+
+                            // Generate unused ID
+                            do
+                            {
+                                id = Utils.GenerateRandomAlphanumericalString(5);
+                                file = await _context.Files.FindAsync(id);
+                            } while (file is not null && !ids.Contains(id));
+
+                            var newFile = new PostgreSQL.File
+                            {
+                                Id = id,
+                                FileType = section.ContentType ?? ""
+                            };
+                            _context.Files.Add(newFile);
 
                             using var f = new FileStream($"data/{@id}", FileMode.Append);
                             await section.Body.CopyToAsync(f);
@@ -60,15 +75,30 @@ namespace FileAPI.Controllers
 
                         section = await reader.ReadNextSectionAsync();
                     }
+                    await _context.SaveChangesAsync();
                     return String.Join("\n", ids);
 
                 }
                 else
                 {
                     // Conventional body post
-                    var contentLength = Request.ContentLength.Value;
-                    var id = Utils.GenerateRandomAlphanumericalString(5);
+                    string id;
+                    PostgreSQL.File? file;
 
+                    // Generate unused ID
+                    do
+                    {
+                        id = Utils.GenerateRandomAlphanumericalString(5);
+                        file = await _context.Files.FindAsync(id);
+                    } while (file is not null);
+
+                    var newFile = new PostgreSQL.File
+                    {
+                        Id = id,
+                        FileType = Request.ContentType ?? ""
+                    };
+                    _context.Files.Add(newFile);
+                    await _context.SaveChangesAsync();
                     using var f = new FileStream($"data/{@id}", FileMode.Append);
                     await Request.Body.CopyToAsync(f);
                     return id;
@@ -76,6 +106,7 @@ namespace FileAPI.Controllers
             }
             return BadRequest();
         }
+
     }
 
 }
