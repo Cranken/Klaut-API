@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace FileAPI.PostgreSQL
@@ -11,6 +13,8 @@ namespace FileAPI.PostgreSQL
 
     public class File
     {
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Key]
         public string Id { get; set; }
 
         public string FileType { get; set; }
