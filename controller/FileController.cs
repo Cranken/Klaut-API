@@ -52,7 +52,7 @@ namespace FileAPI.Controllers
                         if (cDispHeader is not null)
                         {
                             string id;
-                            PostgreSQL.File? file;
+                            Models.File? file;
 
                             // Generate unused ID
                             do
@@ -61,10 +61,11 @@ namespace FileAPI.Controllers
                                 file = await _context.Files.FindAsync(id);
                             } while (file is not null && !ids.Contains(id));
 
-                            var newFile = new PostgreSQL.File
+                            var newFile = new Models.File
                             {
                                 Id = id,
-                                FileType = section.ContentType ?? ""
+                                FileType = section.ContentType ?? "",
+                                OriginalFileName = cDispHeader.FileName.ToString()
                             };
                             _context.Files.Add(newFile);
 
@@ -83,7 +84,7 @@ namespace FileAPI.Controllers
                 {
                     // Conventional body post
                     string id;
-                    PostgreSQL.File? file;
+                    Models.File? file;
 
                     // Generate unused ID
                     do
@@ -92,7 +93,7 @@ namespace FileAPI.Controllers
                         file = await _context.Files.FindAsync(id);
                     } while (file is not null);
 
-                    var newFile = new PostgreSQL.File
+                    var newFile = new Models.File
                     {
                         Id = id,
                         FileType = Request.ContentType ?? ""
