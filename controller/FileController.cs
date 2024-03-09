@@ -1,4 +1,6 @@
 
+using FileAPI.Attributes.Auth;
+using FileAPI.Models.Auth;
 using FileAPI.PostgreSQL;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
@@ -29,6 +31,7 @@ namespace FileAPI.Controllers
             return new FileStreamResult(f, file.FileType);
         }
 
+        [AuthorizeRole(Role.User)]
         [HttpPost("upload")]
         public async Task<ActionResult<string>> UploadFile()
         {
