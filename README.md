@@ -1,5 +1,5 @@
 # TODO
 
-- [ ] File upload
+- [X] File upload
 - [ ] Upload explorer
-- [ ] File sharing
+- [ ] File sharing (permissions between users)
