@@ -72,9 +72,15 @@ namespace FileAPI.Controllers
                             };
                             _context.Files.Add(newFile);
 
-                            using var f = new FileStream($"data/{@id}", FileMode.Append);
+                            using var f = new FileStream($"data/{@id}", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await section.Body.CopyToAsync(f);
                             ids.Add(id);
+
+                            if (section.ContentType != null && section.ContentType.StartsWith("image"))
+                            {
+                                f.Seek(0, 0); // Reset stream position to avoid image library error
+                                await Image.Thumbnail.GenerateThumbnailForImageAsync(f);
+                            }
                         }
 
                         section = await reader.ReadNextSectionAsync();
