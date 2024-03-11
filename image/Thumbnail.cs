@@ -19,26 +19,16 @@ namespace FileAPI.Image
         /// <returns></returns>
         public async static Task GenerateThumbnailForImageAsync(string imagePath, string? outputPath = null)
         {
-            if (outputPath == null)
-            {
-                var fileName = Path.GetFileName(imagePath);
-                var fileParentFolder = GetParentFolder(imagePath);
-
-                Directory.CreateDirectory(@$"{fileParentFolder}\thumbnails");
-                outputPath = @$"{fileParentFolder}\thumbnails\{fileName}.jpg";
-            }
-
-
             try
             {
                 using (var originalImage = SLImage.Load(imagePath))
                 {
-                    await GenAndSaveImpl(originalImage, outputPath);
+                    await GenAndSaveImpl(originalImage, outputPath ?? GetOutputPath(imagePath));
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Could not open image file: {e}");
+                Console.WriteLine($"Could not open image file at path {imagePath}: {e}");
             }
         }
 
@@ -50,27 +40,26 @@ namespace FileAPI.Image
         /// <returns></returns>
         public async static Task GenerateThumbnailForImageAsync(FileStream imageStream, string? outputPath = null)
         {
-            if (outputPath == null)
-            {
-                var fileName = Path.GetFileName(imageStream.Name);
-                var fileParentFolder = GetParentFolder(imageStream.Name);
-
-                Directory.CreateDirectory(@$"{fileParentFolder}\thumbnails");
-                outputPath = @$"{fileParentFolder}\thumbnails\{fileName}.jpg";
-            }
-
-
             try
             {
                 using (var originalImage = SLImage.Load(imageStream))
                 {
-                    await GenAndSaveImpl(originalImage, outputPath);
+                    await GenAndSaveImpl(originalImage, outputPath ?? GetOutputPath(imageStream.Name));
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Could not open image file: {e}");
+                Console.WriteLine($"Could not open image file stream: {e}");
             }
+        }
+
+        private static string GetOutputPath(string originalFilePath)
+        {
+            var fileName = Path.GetFileName(originalFilePath);
+            var fileParentFolder = GetParentFolder(originalFilePath);
+
+            Directory.CreateDirectory(@$"{fileParentFolder}\thumbnails");
+            return @$"{fileParentFolder}\thumbnails\{fileName}.jpg";
         }
 
         private async static Task GenAndSaveImpl(SLImage img, string outputPath)
