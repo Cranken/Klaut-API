@@ -17,18 +17,19 @@ namespace FileAPI.Image
         /// <param name="imagePath">Path to the image the thumbnail should be generated for</param>
         /// <param name="outputPath">Optional output path for the thumbnail. If not specified, the thumbnail will be saved with the same name in the "thumbnail" subdirectory.</param>
         /// <returns></returns>
-        public async static Task GenerateThumbnailForImageAsync(string imagePath, string? outputPath = null)
+        public async static Task<bool> GenerateThumbnailForImageAsync(string imagePath, string? outputPath = null)
         {
             try
             {
                 using (var originalImage = SLImage.Load(imagePath))
                 {
-                    await GenAndSaveImpl(originalImage, outputPath ?? GetOutputPath(imagePath));
+                    return await GenAndSaveImpl(originalImage, outputPath ?? GetOutputPath(imagePath));
                 }
             }
             catch (Exception e)
             {
                 Console.WriteLine($"Could not open image file at path {imagePath}: {e}");
+                return false;
             }
         }
 
@@ -38,18 +39,19 @@ namespace FileAPI.Image
         /// <param name="imageStream">FileStream to the image the thumbnail should be generated for</param>
         /// <param name="outputPath">Optional output path for the thumbnail. If not specified, the thumbnail will be saved with the same name in the "thumbnail" subdirectory.</param>
         /// <returns></returns>
-        public async static Task GenerateThumbnailForImageAsync(FileStream imageStream, string? outputPath = null)
+        public async static Task<bool> GenerateThumbnailForImageAsync(FileStream imageStream, string? outputPath = null)
         {
             try
             {
                 using (var originalImage = SLImage.Load(imageStream))
                 {
-                    await GenAndSaveImpl(originalImage, outputPath ?? GetOutputPath(imageStream.Name));
+                    return await GenAndSaveImpl(originalImage, outputPath ?? GetOutputPath(imageStream.Name));
                 }
             }
             catch (Exception e)
             {
                 Console.WriteLine($"Could not open image file stream: {e}");
+                return false;
             }
         }
 
@@ -62,7 +64,7 @@ namespace FileAPI.Image
             return @$"{fileParentFolder}\thumbnails\{fileName}.jpg";
         }
 
-        private async static Task GenAndSaveImpl(SLImage img, string outputPath)
+        private async static Task<bool> GenAndSaveImpl(SLImage img, string outputPath)
         {
             var (w, h) = img.Size;
             var tgtSize = w > h ? new Size(64, 0) : new Size(0, 64);
@@ -70,10 +72,12 @@ namespace FileAPI.Image
             try
             {
                 await img.SaveAsJpegAsync(outputPath);
+                return true;
             }
             catch (Exception e)
             {
                 Console.WriteLine($"Could not save thumbnail image at {outputPath}: {e}");
+                return false;
             }
         }
     }

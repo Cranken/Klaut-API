@@ -19,7 +19,7 @@ namespace FileAPI.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<FileStream>> GetFileAsync(string id)
+        public async Task<ActionResult<FileStream>> GetFile(string id, bool thumbnail = false)
         {
             var file = await _context.Files.FindAsync(id);
 
@@ -27,8 +27,36 @@ namespace FileAPI.Controllers
             {
                 return NotFound();
             }
-            var f = new FileStream($"data/{@file.Id}", FileMode.Open, FileAccess.Read);
-            return new FileStreamResult(f, file.FileType);
+            string filePath;
+            if (thumbnail)
+            {
+                if (file.ThumbnailAvailable)
+                {
+                    filePath = "data/" + (thumbnail ? "thumbnails/" : "") + file.Id + (thumbnail ? ".jpg" : "");
+                }
+                else
+                {
+                    return NotFound();
+                }
+            }
+            else
+            {
+
+                filePath = @$"data/{file.Id}";
+            }
+            try
+            {
+                var f = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                return new FileStreamResult(f, file.FileType);
+            }
+            catch (FileNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (Exception)
+            {
+                return StatusCode(500);
+            }
         }
 
         [AuthorizeRole(Role.User)]
@@ -79,7 +107,7 @@ namespace FileAPI.Controllers
                             if (section.ContentType != null && section.ContentType.StartsWith("image"))
                             {
                                 f.Seek(0, 0); // Reset stream position to avoid image library error
-                                await Image.Thumbnail.GenerateThumbnailForImageAsync(f);
+                                newFile.ThumbnailAvailable = await Image.Thumbnail.GenerateThumbnailForImageAsync(f);
                             }
                         }
 
